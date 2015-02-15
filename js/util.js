@@ -25,21 +25,23 @@ function App() {
   /**
    * spinを実施する。
    */
-  this.startSpin = function() {
+  function startSpin() {
+    console.log("startSpin");
     $('body').append('<div id="spin_modal_overlay" style="background-color: rgba(0, 0, 0, 0.6); width:100%; height:100%; position:fixed; top:0px; left:0px; z-index:' + (spinopts.zIndex - 1) + '"/>');
     var spinElem = $("#spin_modal_overlay")[0];
     spinner.spin(spinElem);
-    setTimeout(this.stopSpin, 5000);
   };
+  this.startSpin = startSpin;
 
   /**
    * スピンを終了する
    */
-  this.stopSpin = function() {
+  function stopSpin() {
     console.log("stopSpin")
     spinner.stop();
     $('#spin_modal_overlay').remove();
   };
+  this.stopSpin = stopSpin;
 
   /**
    * モーダルダイアログを表示する
@@ -47,13 +49,69 @@ function App() {
    * @param text テキスト
    * @param callback コールバック
    */
-  this.showDialog = function(title, text, callback) {
+  function showDialog(title, text, callback) {
     dialogVM.$data.title = title;
     dialogVM.$data.text = text;
     dialogVM.$data.callback = callback;
     $('#dialog').modal('show');
     console.log("showdialog");
   };
+  this.showDialog = showDialog;
+
+  function closeDialog() {
+    $('#dialog').modal('hide');
+  }
+  this.closeDialog = closeDialog;
+
+  /**
+   *
+   */
+  this.issues = function() {
+    this.startSpin();
+    var total = 0;
+    var base = "http://localhost/redmine/projects/restcheck/issues.json";
+    var issues = [];
+    $.when($.ajax({
+      url: base,
+      cache: false,
+      dataType: "jsonp",
+      success: function(d) {
+        total = d.total_count;
+      }
+    })).then(
+      function() {
+        var limit = 100;
+        var c = Math.floor(total / limit) + 1;
+        var defs = [];
+        for (i = 0; i < c; i++) {
+          var u = base + "?limit=" + limit + "&offset=" + (i * limit);
+          defs.push(
+            $.ajax({
+              url: u,
+              cache: false,
+              dataType: "jsonp",
+              success: function(d) {
+                issues = issues.concat(d.issues);
+              }
+            })
+          );
+        }
+        $.when.apply(null, defs).done(
+          function(){
+              stopSpin();
+              alert("total get issues " + issues.length);
+          }
+        ).fail(
+          function(){
+              stopSpin();
+          }
+        );
+      },
+      function() {
+        stopSpin();
+      }
+    );
+  }
 };
 
 var app = new App();
@@ -85,7 +143,9 @@ var dialogVM = new Vue({
   methods: {
     closeDialog: function() {
       console.log("closing dialog");
-      this.$data.callback();
+      if (callback != null) {
+        this.$data.callback();
+      }
     }
   }
 });
