@@ -1,5 +1,10 @@
 function App() {
 
+  var APIKEY = "6780c3f9c59e605e339b89e57ea0530249016dff";
+  var REDMINE_BASE = "http://localhost/redmine/";
+  var PROJECT_BASE = "http://localhost/redmine/projects/restcheck/";
+
+
   var spinopts = {
     lines: 5, // The number of lines to draw
     length: 20, // The length of each line
@@ -64,17 +69,18 @@ function App() {
   this.closeDialog = closeDialog;
 
   /**
-   *
+   * RedmineからIssuesを取得する。
    */
-  this.issues = function() {
+  function issues() {
     this.startSpin();
     var total = 0;
-    var base = "http://localhost/redmine/projects/restcheck/issues.json";
+    var base = PROJECT_BASE + "issues.json?status_id=*";
     var issues = [];
     $.when($.ajax({
       url: base,
       cache: false,
       dataType: "jsonp",
+      data: {key: APIKEY},
       success: function(d) {
         total = d.total_count;
       }
@@ -84,12 +90,13 @@ function App() {
         var c = Math.floor(total / limit) + 1;
         var defs = [];
         for (i = 0; i < c; i++) {
-          var u = base + "?limit=" + limit + "&offset=" + (i * limit);
+          var u = base + "?limit=" + limit + "&offset=" + (i * limit)+"&status_id=*";
           defs.push(
             $.ajax({
               url: u,
               cache: false,
               dataType: "jsonp",
+              data: {key: APIKEY},
               success: function(d) {
                 issues = issues.concat(d.issues);
               }
@@ -97,13 +104,13 @@ function App() {
           );
         }
         $.when.apply(null, defs).done(
-          function(){
-              stopSpin();
-              alert("total get issues " + issues.length);
+          function() {
+            stopSpin();
+            alert("total get issues " + issues.length);
           }
         ).fail(
-          function(){
-              stopSpin();
+          function() {
+            stopSpin();
           }
         );
       },
@@ -112,10 +119,69 @@ function App() {
       }
     );
   }
+  this.issues = issues;
+
+
+  /**
+  * RedmineからUsersを取得する。
+   */
+  function members() {
+    startSpin();
+    var total = 0;
+    var url = REDMINE_BASE + "users.json";
+    var members = [];
+    $.when($.ajax({
+      url: url,
+      cache: false,
+      dataType: "jsonp",
+      data: {
+        key: APIKEY
+      },
+      success: function(d) {
+        total = d.total_count;
+      }
+    })).then(
+      function() {
+        var limit = 100;
+        var c = Math.floor(total / limit) + 1;
+        var defs = [];
+        for (i = 0; i < c; i++) {
+          var u = url + "?limit=" + limit + "&offset=" + (i * limit);
+          defs.push(
+            $.ajax({
+              url: u,
+              cache: false,
+              dataType: "jsonp",
+              data: {
+                key: APIKEY
+              },
+              success: function(d) {
+                members = members.concat(d.users);
+              }
+            })
+          );
+        }
+        $.when.apply(null, defs).done(
+          function() {
+            stopSpin();
+            alert("total get issues " + members.length);
+          }
+        ).fail(
+          function() {
+            stopSpin();
+          }
+        );
+      },
+      function() {
+        stopSpin();
+      }
+    );
+  }
+  this.members = members;
+
 };
 
 var app = new App();
-
 
 var appvm = new Vue({
   el: "#app",
